@@ -99,10 +99,9 @@ new #[Layout('layouts::app')] class extends Component {
     #[On('echo:room.{room.code},RoundEnded')]
     public function onRoundEnded(): void
     {
-        $endedRound = $this->room->rounds()
-            ->whereIn('status', ['correct', 'timeout'])
-            ->latest()
-            ->first();
+        // $this->activeRound is hydrated fresh from DB at request start — it's the round that just ended
+        $endedRound = $this->activeRound;
+        $endedRound?->load('winner');
 
         $this->roundEndsAt = '';
         $this->roundEndOverlay = true;

@@ -89,10 +89,6 @@ window.pictionaryRoom = (roomCode, isDrawer, myWord) => ({
     resizeObserver: null,
     channel: null,
 
-    overlayVisible: false,
-    overlayStatus: '',
-    overlayWord: '',
-    overlayWinnerName: '',
     overlayTimer: null,
 
     init() {
@@ -107,40 +103,11 @@ window.pictionaryRoom = (roomCode, isDrawer, myWord) => ({
             this.channel.bind('App\\Events\\StrokeSynced', (data) => {
                 this.applyRemoteStroke(data.stroke);
             });
-            // Handle overlay directly via Pusher — avoids Livewire batching both
-            // RoundEnded + RoundStarted Echo requests and losing the dispatch
-            this.channel.bind('App\\Events\\RoundEnded', (data) => {
-                this.overlayStatus = data.status ?? '';
-                this.overlayWord = data.word ?? '';
-                this.overlayWinnerName = data.winner_name ?? '';
-                this.overlayVisible = true;
-                clearTimeout(this.overlayTimer);
-            });
-            this.channel.bind('App\\Events\\RoundStarted', () => {
-                clearTimeout(this.overlayTimer);
-                this.overlayTimer = setTimeout(() => {
-                    this.overlayVisible = false;
-                }, 3000);
-            });
         }
-
-        // For the correct guesser: excluded from Pusher broadcasts, so submitGuess
-        // dispatches these events locally via Livewire
-        window.addEventListener('round-ended', (e) => {
-            this.overlayStatus = e.detail.status ?? '';
-            this.overlayWord = e.detail.word ?? '';
-            this.overlayWinnerName = e.detail.winner_name ?? '';
-            this.overlayVisible = true;
-            clearTimeout(this.overlayTimer);
-        });
 
         window.addEventListener('timer-reset', () => {
             this.clearCanvas();
             this.resetTimer();
-            clearTimeout(this.overlayTimer);
-            this.overlayTimer = setTimeout(() => {
-                this.overlayVisible = false;
-            }, 3000);
         });
 
         // Replay persisted strokes for late-joiners and refreshers

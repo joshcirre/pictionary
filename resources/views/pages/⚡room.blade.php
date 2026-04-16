@@ -26,6 +26,11 @@ new #[Layout('layouts::app')] class extends Component {
     public bool $wrongGuess = false;
     public bool $isDrawer = false;
 
+    public bool $roundEndOverlay = false;
+    public string $roundEndStatus = '';
+    public string $roundEndWord = '';
+    public string $roundEndWinnerName = '';
+
     public function mount(Room $room, JoinRoomAction $joinRoomAction, StartRoundAction $startRoundAction): void
     {
         if ($room->isEnded()) {
@@ -91,17 +96,20 @@ new #[Layout('layouts::app')] class extends Component {
         $this->dispatch('timer-reset');
     }
 
-    /** @param array<string, mixed> $event */
     #[On('echo:room.{room.code},RoundEnded')]
-    public function onRoundEnded(array $event): void
+    public function onRoundEnded(): void
     {
+        $endedRound = $this->room->rounds()
+            ->whereIn('status', ['correct', 'timeout'])
+            ->latest()
+            ->first();
+
         $this->roundEndsAt = '';
+        $this->roundEndOverlay = true;
+        $this->roundEndStatus = $endedRound?->status ?? 'timeout';
+        $this->roundEndWord = $endedRound?->word ?? '';
+        $this->roundEndWinnerName = $endedRound?->winner?->name ?? '';
         $this->syncState();
-        $this->dispatch('round-ended',
-            status: $event['status'] ?? '',
-            word: $event['word'] ?? '',
-            winner_name: $event['winner_name'] ?? null,
-        );
     }
 
     public function submitGuess(EndRoundAction $endRoundAction): void
@@ -120,8 +128,11 @@ new #[Layout('layouts::app')] class extends Component {
             $endRoundAction->handle($this->activeRound, 'correct', $this->currentPlayer);
             // Winner is excluded from Echo broadcasts (X-Socket-ID), so handle locally
             $this->roundEndsAt = '';
+            $this->roundEndOverlay = true;
+            $this->roundEndStatus = 'correct';
+            $this->roundEndWord = $word;
+            $this->roundEndWinnerName = $winnerName;
             $this->syncState();
-            $this->dispatch('round-ended', status: 'correct', word: $word, winner_name: $winnerName);
             $this->dispatch('timer-reset');
         } else {
             $this->wrongGuess = true;
@@ -242,10 +253,11 @@ new #[Layout('layouts::app')] class extends Component {
     <div class="flex flex-1 overflow-hidden">
         {{-- Canvas + guess --}}
         <main class="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-stone-100 p-6 dark:bg-zinc-950">
-            {{-- Round end overlay (Alpine-driven so all players see it, including the correct guesser) --}}
+            {{-- Round end overlay — visibility and content driven by Livewire properties so all players see it reliably --}}
             <div
                 wire:ignore
-                x-show="overlayVisible"
+                x-show="$wire.roundEndOverlay"
+                x-init="$watch('$wire.roundEndOverlay', v => { if (v) { clearTimeout(overlayTimer); overlayTimer = setTimeout(() => $wire.set('roundEndOverlay', false), 4000); } })"
                 x-transition:enter="transition duration-200"
                 x-transition:enter-start="opacity-0"
                 x-transition:enter-end="opacity-100"
@@ -256,13 +268,13 @@ new #[Layout('layouts::app')] class extends Component {
                 style="display: none"
             >
                 <div class="border-l-4 border-amber-400 pl-8">
-                    <template x-if="overlayStatus === 'correct'">
+                    <template x-if="$wire.roundEndStatus === 'correct'">
                         <div>
                             <p class="mb-1 font-mono text-[10px] tracking-[0.25em] text-emerald-600">CORRECT GUESS</p>
-                            <p class="text-3xl font-bold text-zinc-900 dark:text-zinc-100" x-text="overlayWinnerName + ' got it!'"></p>
+                            <p class="text-3xl font-bold text-zinc-900 dark:text-zinc-100" x-text="$wire.roundEndWinnerName + ' got it!'"></p>
                         </div>
                     </template>
-                    <template x-if="overlayStatus !== 'correct'">
+                    <template x-if="$wire.roundEndStatus !== 'correct'">
                         <div>
                             <p class="mb-1 font-mono text-[10px] tracking-[0.25em] text-red-500">TIME'S UP</p>
                             <p class="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Nobody guessed it.</p>
@@ -270,7 +282,7 @@ new #[Layout('layouts::app')] class extends Component {
                     </template>
                     <p class="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
                         The word was
-                        <span class="font-bold text-amber-500" x-text="overlayWord"></span>
+                        <span class="font-bold text-amber-500" x-text="$wire.roundEndWord"></span>
                     </p>
                     <p class="mt-4 font-mono text-[10px] tracking-widest text-zinc-400 dark:text-zinc-500">NEXT ROUND STARTING...</p>
                 </div>

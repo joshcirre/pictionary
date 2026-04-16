@@ -13,7 +13,9 @@ use Override;
 
 final class User extends Authenticatable
 {
+    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
+
     use HasUuids;
     use Notifiable;
 

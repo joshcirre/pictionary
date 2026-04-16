@@ -26,7 +26,6 @@ new #[Layout('layouts::app')] class extends Component {
     public bool $wrongGuess = false;
     public bool $isDrawer = false;
 
-    public bool $roundEndOverlay = false;
     public string $roundEndStatus = '';
     public string $roundEndWord = '';
     public string $roundEndWinnerName = '';
@@ -104,11 +103,11 @@ new #[Layout('layouts::app')] class extends Component {
         $endedRound?->load('winner');
 
         $this->roundEndsAt = '';
-        $this->roundEndOverlay = true;
         $this->roundEndStatus = $endedRound?->status ?? 'timeout';
         $this->roundEndWord = $endedRound?->word ?? '';
         $this->roundEndWinnerName = $endedRound?->winner?->name ?? '';
         $this->syncState();
+        $this->dispatch('round-ended');
     }
 
     public function submitGuess(EndRoundAction $endRoundAction): void
@@ -125,13 +124,13 @@ new #[Layout('layouts::app')] class extends Component {
             $word = $this->activeRound->word;
             $winnerName = $this->currentPlayer->name;
             $endRoundAction->handle($this->activeRound, 'correct', $this->currentPlayer);
-            // Winner is excluded from Echo broadcasts (X-Socket-ID), so handle locally
+            // Winner is excluded from Echo broadcasts (X-Socket-ID), so handle overlay locally
             $this->roundEndsAt = '';
-            $this->roundEndOverlay = true;
             $this->roundEndStatus = 'correct';
             $this->roundEndWord = $word;
             $this->roundEndWinnerName = $winnerName;
             $this->syncState();
+            $this->dispatch('round-ended');
             $this->dispatch('timer-reset');
         } else {
             $this->wrongGuess = true;
@@ -252,11 +251,10 @@ new #[Layout('layouts::app')] class extends Component {
     <div class="flex flex-1 overflow-hidden">
         {{-- Canvas + guess --}}
         <main class="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-stone-100 p-6 dark:bg-zinc-950">
-            {{-- Round end overlay — visibility and content driven by Livewire properties so all players see it reliably --}}
+            {{-- Round end overlay — shown via local Alpine state triggered by 'round-ended' browser event --}}
             <div
                 wire:ignore
-                x-show="$wire.roundEndOverlay"
-                x-init="$watch('$wire.roundEndOverlay', v => { if (v) { clearTimeout(overlayTimer); overlayTimer = setTimeout(() => $wire.set('roundEndOverlay', false), 4000); } })"
+                x-show="overlayVisible"
                 x-transition:enter="transition duration-200"
                 x-transition:enter-start="opacity-0"
                 x-transition:enter-end="opacity-100"

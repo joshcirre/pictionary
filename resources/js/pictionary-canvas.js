@@ -89,6 +89,7 @@ window.pictionaryRoom = (roomCode, isDrawer, myWord) => ({
     resizeObserver: null,
     channel: null,
 
+    overlayVisible: false,
     overlayTimer: null,
 
     init() {
@@ -104,6 +105,15 @@ window.pictionaryRoom = (roomCode, isDrawer, myWord) => ({
                 this.applyRemoteStroke(data.stroke);
             });
         }
+
+        // round-ended fires after Livewire sets $wire.roundEnd* content properties
+        window.addEventListener('round-ended', () => {
+            this.overlayVisible = true;
+            clearTimeout(this.overlayTimer);
+            this.overlayTimer = setTimeout(() => {
+                this.overlayVisible = false;
+            }, 4000);
+        });
 
         window.addEventListener('timer-reset', () => {
             this.clearCanvas();

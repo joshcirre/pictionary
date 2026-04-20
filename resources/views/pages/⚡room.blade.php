@@ -247,10 +247,31 @@ new #[Layout('layouts::app')] class extends Component {
         @endif
     </div>
 
+    {{-- Mobile player strip --}}
+    <div class="flex shrink-0 gap-3 overflow-x-auto border-b border-zinc-200 bg-white px-4 py-2 md:hidden dark:border-zinc-800 dark:bg-zinc-900">
+        @foreach ($players as $player)
+            @php
+                $isDrawing = $this->activeRound && $this->activeRound->drawer_player_id === $player['id'];
+                $isMe = $currentPlayer && $player['id'] === $currentPlayer->id;
+            @endphp
+            <div
+                wire:key="mobile-player-{{ $player['id'] }}"
+                class="{{ $isDrawing ? 'border-amber-400' : 'border-transparent' }} flex shrink-0 items-center gap-2 border-l-2 pl-2"
+            >
+                <span class="max-w-[80px] truncate text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                    {{ $player['name'] }}{{ $isMe ? '*' : '' }}
+                </span>
+                <span class="{{ $isDrawing ? 'text-amber-500' : 'text-zinc-500' }} font-mono text-xs font-bold">
+                    {{ $player['score'] }}
+                </span>
+            </div>
+        @endforeach
+    </div>
+
     {{-- Main area --}}
     <div class="flex flex-1 overflow-hidden">
         {{-- Canvas + guess --}}
-        <main class="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-stone-100 p-6 dark:bg-zinc-950">
+        <main class="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-stone-100 p-4 sm:p-6 dark:bg-zinc-950">
             {{-- Round end overlay — shown via local Alpine state triggered by 'round-ended' browser event --}}
             <div
                 wire:ignore
@@ -348,7 +369,7 @@ new #[Layout('layouts::app')] class extends Component {
         </main>
 
         {{-- Scoreboard sidebar --}}
-        <aside class="flex w-52 shrink-0 flex-col border-l border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <aside class="hidden w-52 shrink-0 flex-col border-l border-zinc-200 bg-white md:flex dark:border-zinc-800 dark:bg-zinc-900">
             <div class="border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
                 <p class="font-mono text-[10px] tracking-[0.25em] text-zinc-400 dark:text-zinc-500">PLAYERS</p>
             </div>
@@ -385,4 +406,19 @@ new #[Layout('layouts::app')] class extends Component {
             </div>
         </aside>
     </div>
+
+    {{-- Footer --}}
+    <footer class="flex shrink-0 items-center justify-center border-t border-zinc-200 bg-white px-4 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+        <a
+            href="https://github.com/joshcirre/pictionary"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-1.5 font-mono text-[10px] tracking-[0.2em] text-zinc-400 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300"
+        >
+            <svg class="size-3" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+            </svg>
+            GITHUB
+        </a>
+    </footer>
 </div>
